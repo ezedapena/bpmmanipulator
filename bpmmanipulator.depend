@@ -1,0 +1,22 @@
+# depslib dependency file v1.0
+1715620118 source:e:\facu\topicosi\bpmmanipulator\main.c
+	<stdio.h>
+	"funciones_estudiante.h"
+	"constantes.h"
+
+1716154959 e:\facu\topicosi\bpmmanipulator\funciones_estudiante.h
+	"estructuras.h"
+	"constantes.h"
+
+1715620118 e:\facu\topicosi\bpmmanipulator\constantes.h
+
+1716160707 source:e:\facu\topicosi\bpmmanipulator\funciones_estudiante.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"estructuras.h"
+	"constantes.h"
+	"funciones_estudiante.h"
+
+1716154871 e:\facu\topicosi\bpmmanipulator\estructuras.h
+
