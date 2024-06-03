@@ -5,12 +5,12 @@
     Apellido: Dapena
     Nombre: Ezequiel
     DNI: 42.725.436
-    Entrega:
+    Entrega: Si
     -----------------
     Apellido: Brance
     Nombre: Alan Emanuel
     DNI: 36.847.607
-    Entrega:
+    Entrega: Si
     -----------------
     Apellido:
     Nombre:
@@ -21,72 +21,11 @@
 
 #include "funciones_estudiante.h"
 
-#define AZUL 0
-#define VERDE 1
 #define ROJO 2
+#define VERDE 1
+#define AZUL 0
 
-char** obtenerArgumentosModificaciones(int argc, char* argv[], int* cantidad)
-{
-    *cantidad = argc - 2;
-    char** modificaciones = (char**)malloc((*cantidad) * sizeof(char*));
-
-    for (int i = 1; i < argc - 1; i++)
-    {
-        modificaciones[i - 1] = argv[i];
-    }
-
-    return modificaciones;
-}
-
-int cargarMetadatos(FILE* archivo, t_metadata* metadatos)
-{
-    unsigned short tipoArchivo;
-    fread(&tipoArchivo, sizeof(unsigned short), 1, archivo);
-    if (tipoArchivo != 0x4D42)   // 'BM' en little-endian
-    {
-        printf("El archivo no es un BMP válido.\n");
-        return ARCHIVO_NO_ENCONTRADO;
-    }
-
-    fread(&metadatos->tamArchivo, sizeof(unsigned int), 1, archivo);
-    fseek(archivo, 4, SEEK_CUR);
-    fread(&metadatos->tamEncabezado, sizeof(unsigned int), 1, archivo);
-
-    unsigned int tamEncabezadoInfo;
-    fread(&tamEncabezadoInfo, sizeof(unsigned int), 1, archivo);
-    if (tamEncabezadoInfo != 40)
-    {
-        printf("El encabezado de información BMP no tiene el tamaño esperado.\n");
-        return ARCHIVO_NO_ENCONTRADO;
-    }
-
-    fread(&metadatos->ancho, sizeof(unsigned int), 1, archivo);
-    fread(&metadatos->alto, sizeof(unsigned int), 1, archivo);
-
-    unsigned short planos;
-    fread(&planos, sizeof(unsigned short), 1, archivo);
-    if (planos != 1)
-    {
-        printf("El archivo BMP no tiene el número esperado de planos de color.\n");
-        return ARCHIVO_NO_ENCONTRADO;
-    }
-
-    fread(&metadatos->profundidad, sizeof(unsigned short), 1, archivo);
-    if (metadatos->profundidad != 24)
-    {
-        printf("El archivo BMP no es de 24 bits.\n");
-        return ARCHIVO_NO_ENCONTRADO;
-    }
-
-    printf("Archivo cargado correctamente.\n");
-    printf("Tamaño del archivo: %u bytes\n", metadatos->tamArchivo);
-    printf("Ancho de la imagen: %u pixels\n", metadatos->ancho);
-    printf("Alto de la imagen: %u pixels\n", metadatos->alto);
-
-    return TODO_OK;
-}
-
-int copiarEncabezado(FILE* archivoSalida, t_metadata* metadatos)
+int copiarEncabezado(FILE* archivoSalida, const t_metadata* metadatos)
 {
     // Crear un buffer para el encabezado
     unsigned char* bufferEncabezado = (unsigned char*)malloc(metadatos->tamEncabezado);
@@ -138,7 +77,7 @@ void leerEscribirRelleno(FILE* archivoEntrada, FILE* archivoSalida, int relleno)
     fwrite(rellenoBuffer, 1, relleno, archivoSalida);
 }
 
-int aplicarNegativo(FILE* archivoEntrada, t_metadata* metadatos)
+int aplicarNegativo(FILE* archivoEntrada, const t_metadata* metadatos)
 {
     FILE* archivoSalida = fopen("estudiante_negativo.bmp", "wb");
     if (!archivoSalida)
@@ -147,7 +86,7 @@ int aplicarNegativo(FILE* archivoEntrada, t_metadata* metadatos)
         return NO_SE_PUEDE_CREAR_ARCHIVO;
     }
 
-    int resultado = copiarEncabezado(archivoSalida, metadatos);;
+    int resultado = copiarEncabezado(archivoSalida, metadatos);
     if (resultado != TODO_OK)
     {
         fclose(archivoSalida);
@@ -166,9 +105,9 @@ int aplicarNegativo(FILE* archivoEntrada, t_metadata* metadatos)
         for (int x = 0; x < ancho; x++)
         {
             fread(&pixel.pixel, sizeof(unsigned char), 3, archivoEntrada);
-            pixel.pixel[0] = 255 - pixel.pixel[0];
-            pixel.pixel[1] = 255 - pixel.pixel[1];
-            pixel.pixel[2] = 255 - pixel.pixel[2];
+            pixel.pixel[ROJO] = 255 - pixel.pixel[ROJO];
+            pixel.pixel[VERDE] = 255 - pixel.pixel[VERDE];
+            pixel.pixel[AZUL] = 255 - pixel.pixel[AZUL];
             fwrite(&pixel.pixel, sizeof(unsigned char), 3, archivoSalida);
         }
         leerEscribirRelleno(archivoEntrada, archivoSalida, relleno);
@@ -180,7 +119,7 @@ int aplicarNegativo(FILE* archivoEntrada, t_metadata* metadatos)
     return TODO_OK;
 }
 
-int aplicarEscalaDeGrises(FILE* archivoEntrada, t_metadata* metadatos)
+int aplicarEscalaDeGrises(FILE* archivoEntrada, const t_metadata* metadatos)
 {
     FILE* archivoSalida = fopen("estudiante_escala_de_grises.bmp", "wb");
     if (!archivoSalida)
@@ -189,7 +128,7 @@ int aplicarEscalaDeGrises(FILE* archivoEntrada, t_metadata* metadatos)
         return NO_SE_PUEDE_CREAR_ARCHIVO;
     }
 
-    int resultado = copiarEncabezado(archivoSalida, metadatos);;
+    int resultado = copiarEncabezado(archivoSalida, metadatos);
     if (resultado != TODO_OK)
     {
         fclose(archivoSalida);
@@ -210,9 +149,10 @@ int aplicarEscalaDeGrises(FILE* archivoEntrada, t_metadata* metadatos)
             fread(&pixel.pixel, sizeof(unsigned char), 3, archivoEntrada);
             unsigned char gris = (unsigned char)(0.3 * pixel.pixel[2] + 0.59 * pixel.pixel[1] + 0.11 * pixel.pixel[0]);
 
-            pixel.pixel[0] = gris;
-            pixel.pixel[1] = gris;
-            pixel.pixel[2] = gris;
+            pixel.pixel[ROJO] = gris;
+            pixel.pixel[VERDE] = gris;
+            pixel.pixel[AZUL] = gris;
+
             fwrite(&pixel.pixel, sizeof(unsigned char), 3, archivoSalida);
         }
         leerEscribirRelleno(archivoEntrada, archivoSalida, relleno);
@@ -224,7 +164,7 @@ int aplicarEscalaDeGrises(FILE* archivoEntrada, t_metadata* metadatos)
     return TODO_OK;
 }
 
-int aplicarContraste(FILE* archivoEntrada, t_metadata* metadatos, double factorContraste, const char* nombreArchivoSalida)
+int aplicarContraste(FILE* archivoEntrada, const t_metadata* metadatos, double factorContraste, const char* nombreArchivoSalida)
 {
     FILE* archivoSalida = fopen(nombreArchivoSalida, "wb");
     if (!archivoSalida)
@@ -233,7 +173,7 @@ int aplicarContraste(FILE* archivoEntrada, t_metadata* metadatos, double factorC
         return NO_SE_PUEDE_CREAR_ARCHIVO;
     }
 
-    int resultado = copiarEncabezado(archivoSalida, metadatos);;
+    int resultado = copiarEncabezado(archivoSalida, metadatos);
     if (resultado != TODO_OK)
     {
         fclose(archivoSalida);
@@ -289,7 +229,7 @@ int aplicarContraste(FILE* archivoEntrada, t_metadata* metadatos, double factorC
     return TODO_OK;
 }
 
-int aplicarTonalidad(FILE* archivoEntrada, t_metadata* metadatos, int colorAIncrementar, const char* nombreArchivoSalida)
+int aplicarTonalidad(FILE* archivoEntrada, const t_metadata* metadatos, int colorAIncrementar, const char* nombreArchivoSalida)
 {
     FILE* archivoSalida = fopen(nombreArchivoSalida, "wb");
     if (!archivoSalida)
@@ -298,7 +238,7 @@ int aplicarTonalidad(FILE* archivoEntrada, t_metadata* metadatos, int colorAIncr
         return NO_SE_PUEDE_CREAR_ARCHIVO;
     }
 
-    int resultado = copiarEncabezado(archivoSalida, metadatos);;
+    int resultado = copiarEncabezado(archivoSalida, metadatos);
     if (resultado != TODO_OK)
     {
         fclose(archivoSalida);
@@ -334,7 +274,7 @@ int aplicarTonalidad(FILE* archivoEntrada, t_metadata* metadatos, int colorAIncr
     return TODO_OK;
 }
 
-int aplicarRecortar(FILE* archivoEntrada, t_metadata* metadatos)
+int aplicarRecortar(FILE* archivoEntrada, const t_metadata* metadatos)
 {
     FILE* archivoSalida = fopen("estudiante_recortar.bmp", "wb");
     if (!archivoSalida)
@@ -369,7 +309,7 @@ int aplicarRecortar(FILE* archivoEntrada, t_metadata* metadatos)
     int rellenoOriginal = (4 - (anchoOriginal * 3) % 4) % 4;
     t_pixel pixel;
 
-    for (int y = metadatosRecorte.alto; y < altoOriginal; y++)
+    for (int y = altoOriginal - metadatosRecorte.alto; y < altoOriginal; y++)
     {
         fseek(archivoEntrada, metadatos->tamEncabezado + y * (anchoOriginal * 3 + rellenoOriginal), SEEK_SET);
 
@@ -391,7 +331,7 @@ int aplicarRecortar(FILE* archivoEntrada, t_metadata* metadatos)
     return TODO_OK;
 }
 
-int aplicarRotar(FILE* archivoEntrada, t_metadata* metadatos, bool rotarDerecha, const char* nombreArchivoSalida)
+int aplicarRotar(FILE* archivoEntrada, const t_metadata* metadatos, bool rotarDerecha, const char* nombreArchivoSalida)
 {
     FILE* archivoSalida = fopen(nombreArchivoSalida, "wb");
     if (!archivoSalida)
@@ -418,7 +358,7 @@ int aplicarRotar(FILE* archivoEntrada, t_metadata* metadatos, bool rotarDerecha,
         return resultado;
     }
 
-    // Crear un imagen temporal
+    // Crear una imagen temporal
     unsigned char* imagenTemp = (unsigned char*)malloc((metadatos->ancho * 3 + rellenoOriginal) * metadatos->alto);
     if (!imagenTemp)
     {
@@ -478,7 +418,7 @@ int aplicarRotar(FILE* archivoEntrada, t_metadata* metadatos, bool rotarDerecha,
     return TODO_OK;
 }
 
-int aplicarEspejo(FILE* archivoEntrada, t_metadata* metadatos)
+int aplicarEspejo(FILE* archivoEntrada, const t_metadata* metadatos)
 {
     FILE* archivoSalida = fopen("estudiante_comodin_espejo.bmp", "wb");
     if (!archivoSalida)
@@ -527,6 +467,54 @@ int aplicarEspejo(FILE* archivoEntrada, t_metadata* metadatos)
     fclose(archivoSalida);
 
     printf("Imagen en espejo guardada como estudiante_comodin_espejo.bmp\n");
+    return TODO_OK;
+}
+
+int cargarMetadatos(FILE* archivo, t_metadata* metadatos)
+{
+    unsigned short tipoArchivo;
+    fread(&tipoArchivo, sizeof(unsigned short), 1, archivo);
+    if (tipoArchivo != 0x4D42)   // 'BM' en little-endian
+    {
+        printf("El archivo no es un BMP válido.\n");
+        return ARCHIVO_NO_ENCONTRADO;
+    }
+
+    fread(&metadatos->tamArchivo, sizeof(unsigned int), 1, archivo);
+    fseek(archivo, 4, SEEK_CUR);
+    fread(&metadatos->tamEncabezado, sizeof(unsigned int), 1, archivo);
+
+    unsigned int tamEncabezadoInfo;
+    fread(&tamEncabezadoInfo, sizeof(unsigned int), 1, archivo);
+    if (tamEncabezadoInfo != 40)
+    {
+        printf("El encabezado de información BMP no tiene el tamaño esperado.\n");
+        return ARCHIVO_NO_ENCONTRADO;
+    }
+
+    fread(&metadatos->ancho, sizeof(unsigned int), 1, archivo);
+    fread(&metadatos->alto, sizeof(unsigned int), 1, archivo);
+
+    unsigned short planos;
+    fread(&planos, sizeof(unsigned short), 1, archivo);
+    if (planos != 1)
+    {
+        printf("El archivo BMP no tiene el número esperado de planos de color.\n");
+        return ARCHIVO_NO_ENCONTRADO;
+    }
+
+    fread(&metadatos->profundidad, sizeof(unsigned short), 1, archivo);
+    if (metadatos->profundidad != 24)
+    {
+        printf("El archivo BMP no es de 24 bits.\n");
+        return ARCHIVO_NO_ENCONTRADO;
+    }
+
+    printf("Archivo cargado correctamente.\n");
+    printf("Tamaño del archivo: %u bytes\n", metadatos->tamArchivo);
+    printf("Ancho de la imagen: %u pixels\n", metadatos->ancho);
+    printf("Alto de la imagen: %u pixels\n", metadatos->alto);
+
     return TODO_OK;
 }
 
@@ -663,6 +651,18 @@ int modificarImagen(const char* nombreArchivo, char** modificaciones, int cantMo
     return TODO_OK;
 }
 
+char** obtenerArgumentosModificaciones(char** argv, int cantModificaciones)
+{
+    char** modificaciones = (char**)malloc(cantModificaciones * sizeof(char*));
+
+    for (int i = 1; i <= cantModificaciones; i++)
+    {
+        modificaciones[i - 1] = argv[i];
+    }
+
+    return modificaciones;
+}
+
 int solucion(int argc, char* argv[])
 {
     if (argc < 3)
@@ -671,8 +671,8 @@ int solucion(int argc, char* argv[])
         return ARCHIVO_NO_ENCONTRADO;
     }
 
-    int cantModificaciones = 0;
-    char** modificaciones = obtenerArgumentosModificaciones(argc, argv, &cantModificaciones);
+    int cantModificaciones = argc - 2;
+    char** modificaciones = obtenerArgumentosModificaciones(argv, cantModificaciones);
     const char* nombreArchivo = argv[argc - 1];
 
     printf("Argumentos:\n");
@@ -692,3 +692,4 @@ int solucion(int argc, char* argv[])
     free(modificaciones);
     return resultado;
 }
+
