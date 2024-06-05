@@ -21,10 +21,6 @@
 
 #include "funciones_estudiante.h"
 
-#define ROJO 2
-#define VERDE 1
-#define AZUL 0
-
 int copiarEncabezado(FILE* archivoSalida, const t_metadata* metadatos)
 {
     // Crear un buffer para el encabezado
@@ -644,7 +640,10 @@ int modificarImagen(const char* nombreArchivo, char** modificaciones, int cantMo
             {
                 printf("Error al aplicar espejo ( comodin ): %d\n", resultado);
             }
+            continue;
         }
+
+        printf("No existe funcion definida bajo el parametro %s\n", modificaciones[i]);
     }
 
     fclose(archivoEntrada);

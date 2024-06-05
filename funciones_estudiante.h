@@ -9,7 +9,12 @@
 #include "estructuras.h"
 #include "constantes.h"
 
+#define ROJO 2
+#define VERDE 1
+#define AZUL 0
+
 // funciones padres
+int solucion(int argc, char* argv[]);
 char** obtenerArgumentosModificaciones(char** argv, int cantModificaciones);
 int cargarMetadatos(FILE* archivo, t_metadata* metadatos);
 int modificarImagen(const char* nombreArchivo, char** modificaciones, int cantModificaciones);
@@ -27,6 +32,6 @@ int aplicarEspejo(FILE* archivoEntrada, const t_metadata* metadatos);
 int copiarEncabezado(FILE* archivoSalida, const t_metadata* metadatos);
 void leerEscribirRelleno(FILE* archivoEntrada, FILE* archivoSalida, int relleno);
 
-int solucion(int argc, char* argv[]);
+
 
 #endif // FUNCIONES_ESTUDIANTE_H_INCLUDED

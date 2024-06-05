@@ -11,7 +11,7 @@
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="--negativo --escala-de-grises --aumentar-contraste --reducir-contraste --tonalidad-azul --tonalidad-verde --tonalidad-roja --recortar --rotar-izquierda --rotar-derecha --comodin pajaro.bmp" />
+				<Option parameters="--negativo --escala-de-grises --aumentar-contraste --reducir-contraste --tonalidad-azul --tonalidad-verde --tonalidad-roja --recortar --rotar-izquierda --rotar-derecha --comodin pepito --otra-funcion-inexistente pajaro.bmp" />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
