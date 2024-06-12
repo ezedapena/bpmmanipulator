@@ -466,6 +466,239 @@ int aplicarEspejo(FILE* archivoEntrada, const t_metadata* metadatos)
     return TODO_OK;
 }
 
+int aplicarAchicar(FILE* archivoEntrada, const t_metadata* metadatos)
+{
+    FILE* archivoSalida = fopen("estudiante_achicar.bmp", "wb");
+    if (!archivoSalida)
+    {
+        puts("No se pudo crear el archivo de salida: estudiante_achicar.bmp\n");
+        return NO_SE_PUEDE_CREAR_ARCHIVO;
+    }
+
+    t_metadata metadatosAchicados = *metadatos;
+
+    // Reducción de tamaño a la mitad
+    metadatosAchicados.alto /= 2;
+    metadatosAchicados.ancho /= 2;
+
+    // Actualizar el tamaño de la imagen en los metadatos reducidos
+    unsigned int tamImagenAchicada = metadatosAchicados.ancho * metadatosAchicados.alto * 3;
+    unsigned int rellenoAchicado = (4 - (metadatosAchicados.ancho * 3) % 4) % 4;
+    tamImagenAchicada += rellenoAchicado * metadatosAchicados.alto;
+
+    metadatosAchicados.tamArchivo = metadatosAchicados.tamEncabezado + tamImagenAchicada;
+
+    int resultado = copiarEncabezado(archivoSalida, &metadatosAchicados);
+    if (resultado != TODO_OK)
+    {
+        fclose(archivoSalida);
+        return resultado;
+    }
+
+    fseek(archivoEntrada, metadatos->tamEncabezado, SEEK_SET);
+
+    int anchoOriginal = metadatos->ancho;
+    int rellenoOriginal = (4 - (anchoOriginal * 3) % 4) % 4;
+    t_pixel pixel;
+
+    for (int y = 0; y < metadatosAchicados.alto; y++)
+    {
+        for (int x = 0; x < metadatosAchicados.ancho; x ++)
+        {
+            // Leer el píxel actual y escribirlo en la imagen achicada
+            fread(&pixel.pixel, sizeof(unsigned char), 3, archivoEntrada);
+            fwrite(&pixel.pixel, sizeof(unsigned char), 3, archivoSalida);
+
+            // Saltar un píxel en la fila original
+            fseek(archivoEntrada, 3, SEEK_CUR);
+        }
+
+        // Saltar el relleno en la fila original
+        fseek(archivoEntrada, rellenoOriginal, SEEK_CUR);
+        // Saltar una fila completa (anchoOriginal * 3 + rellenoOriginal)
+        fseek(archivoEntrada, anchoOriginal * 3 + rellenoOriginal, SEEK_CUR);
+
+        // Escribir el relleno para la fila achicada
+        for (int r = 0; r < rellenoAchicado; r++)
+        {
+            unsigned char relleno = 0;
+            fwrite(&relleno, sizeof(unsigned char), 1, archivoSalida);
+        }
+    }
+
+
+    fclose(archivoSalida);
+
+    puts("Imagen achicada guardada como estudiante_achicar.bmp\n");
+    return TODO_OK;
+}
+
+int aplicarConcatenar(FILE* archivoEntrada, const t_metadata* metadatos, FILE* archivoConcatenar, const t_metadata* metadatosConcatenar)
+{
+    FILE* archivoSalida = fopen("estudiante_concatenar.bmp", "wb");
+    if (!archivoSalida)
+    {
+        puts("No se pudo crear el archivo de salida: estudiante_concatenar.bmp\n");
+        return NO_SE_PUEDE_CREAR_ARCHIVO;
+    }
+
+    // Determinar el ancho mayor y usarlo para los metadatos de la imagen concatenada
+    t_metadata metadatosConcatenados = metadatos->ancho > metadatosConcatenar->ancho ? *metadatos : *metadatosConcatenar;
+    int altoNuevaImg = metadatos->alto + metadatosConcatenar->alto;
+    metadatosConcatenados.alto = altoNuevaImg;
+
+    // Calcular nuevo tamaño de la imagen concatenada
+    unsigned int tamNuevaImg = metadatosConcatenados.ancho * metadatosConcatenados.alto * 3;
+    unsigned int rellenoNuevaImg = (4 - (metadatosConcatenados.ancho * 3) % 4) % 4;
+    tamNuevaImg += rellenoNuevaImg * metadatosConcatenados.alto;
+    metadatosConcatenados.tamArchivo = metadatosConcatenados.tamEncabezado + tamNuevaImg;
+
+    // Copiar el encabezado de la nueva imagen concatenada
+    int resultado = copiarEncabezado(archivoSalida, &metadatosConcatenados);
+    if (resultado != TODO_OK)
+    {
+        fclose(archivoSalida);
+        return resultado;
+    }
+
+    fseek(archivoEntrada, metadatos->tamEncabezado, SEEK_SET);
+    fseek(archivoConcatenar, metadatosConcatenar->tamEncabezado, SEEK_SET);
+
+    t_pixel pixel;
+
+    // Procesar la primera imagen ( abajo )
+    for (int y = 0; y < metadatos->alto; y++)
+    {
+        for (int x = 0; x < metadatos->ancho; x++)
+        {
+            fread(&pixel.pixel, sizeof(unsigned char), 3, archivoEntrada);
+            fwrite(&pixel.pixel, sizeof(unsigned char), 3, archivoSalida);
+        }
+        // Rellenar si el ancho de la primera imagen es menor que el ancho concatenado
+        for (int x = metadatos->ancho; x < metadatosConcatenados.ancho; x++)
+        {
+            pixel.pixel[ROJO] = 0;
+            pixel.pixel[VERDE] = 0;
+            pixel.pixel[AZUL] = 255;
+            fwrite(&pixel.pixel, sizeof(unsigned char), 3, archivoSalida);
+        }
+        leerEscribirRelleno(archivoEntrada, archivoSalida, rellenoNuevaImg);
+    }
+
+    // Procesar la segunda imagen ( arriba )
+    for (int y = 0; y < metadatosConcatenar->alto; y++)
+    {
+        for (int x = 0; x < metadatosConcatenar->ancho; x++)
+        {
+            fread(&pixel.pixel, sizeof(unsigned char), 3, archivoConcatenar);
+            fwrite(&pixel.pixel, sizeof(unsigned char), 3, archivoSalida);
+        }
+        // Rellenar si el ancho de la segunda imagen es menor que el ancho concatenado
+        for (int x = metadatosConcatenar->ancho; x < metadatosConcatenados.ancho; x++)
+        {
+            pixel.pixel[ROJO] = 0;
+            pixel.pixel[VERDE] = 0;
+            pixel.pixel[AZUL] = 255;
+            fwrite(&pixel.pixel, sizeof(unsigned char), 3, archivoSalida);
+        }
+        leerEscribirRelleno(archivoConcatenar, archivoSalida, rellenoNuevaImg);
+    }
+
+    fclose(archivoSalida);
+
+    puts("Imagen concatenada guardada como estudiante_concatenar.bmp\n");
+    return TODO_OK;
+}
+
+int aplicarMonocromo(FILE* archivoEntrada, const t_metadata* metadatos)
+{
+    FILE* archivoSalida = fopen("estudiante_monocromo.bmp", "wb");
+    if (!archivoSalida)
+    {
+        puts("No se pudo crear el archivo de salida: estudiante_monocromo.bmp\n");
+        return NO_SE_PUEDE_CREAR_ARCHIVO;
+    }
+
+    t_metadata metadatosMonocromo = *metadatos;
+    metadatosMonocromo.profundidad = 1;  // Cambiar la profundidad a 1 bit
+
+    // Calcular el relleno original
+    unsigned int rellenoOriginal = (4 - (metadatos->ancho * 3) % 4) % 4;
+
+    // Calcular nuevo tamaño de la imagen monocromática
+    unsigned int anchoBytes = (metadatosMonocromo.ancho + 7) / 8;  // Redondear hacia arriba
+    unsigned int rellenoMonocromo = (4 - (anchoBytes % 4)) % 4;
+    unsigned int tamImagenMonocromo = (anchoBytes + rellenoMonocromo) * metadatosMonocromo.alto;
+
+    metadatosMonocromo.tamArchivo = metadatosMonocromo.tamEncabezado + tamImagenMonocromo + 2 * sizeof(unsigned int);
+
+    // Copiar el encabezado de la nueva imagen monocromática
+    int resultado = copiarEncabezado(archivoSalida, &metadatosMonocromo);
+    if (resultado != TODO_OK)
+    {
+        fclose(archivoSalida);
+        return resultado;
+    }
+
+    // Escribir la paleta de colores para la imagen de 1 bit
+    unsigned int colorNegro = 0x00000000;
+    unsigned int colorBlanco = 0x00FFFFFF;
+    fwrite(&colorNegro, sizeof(unsigned int), 1, archivoSalida);
+    fwrite(&colorBlanco, sizeof(unsigned int), 1, archivoSalida);
+
+    fseek(archivoEntrada, metadatos->tamEncabezado, SEEK_SET);
+
+    t_pixel pixel;
+    unsigned char byteMonocromo = 0;
+    int bitPos = 0;
+
+    for (int y = 0; y < metadatos->alto; y++)
+    {
+        for (int x = 0; x < metadatos->ancho; x++)
+        {
+            fread(&pixel.pixel, sizeof(unsigned char), 3, archivoEntrada);
+            unsigned char promedio = (pixel.pixel[ROJO] + pixel.pixel[VERDE] + pixel.pixel[AZUL]) / 3;
+
+            if (promedio >= 128)
+                byteMonocromo |= (1 << (7 - bitPos));  // Establecer el bit correspondiente
+
+            bitPos++;
+
+            if (bitPos == 8)
+            {
+                fwrite(&byteMonocromo, sizeof(unsigned char), 1, archivoSalida);
+                byteMonocromo = 0;
+                bitPos = 0;
+            }
+        }
+
+        // Escribir cualquier byte incompleto
+        if (bitPos != 0)
+        {
+            fwrite(&byteMonocromo, sizeof(unsigned char), 1, archivoSalida);
+            byteMonocromo = 0;
+            bitPos = 0;
+        }
+
+        // Escribir relleno
+        for (int r = 0; r < rellenoMonocromo; r++)
+        {
+            unsigned char rellenoByte = 0;
+            fwrite(&rellenoByte, sizeof(unsigned char), 1, archivoSalida);
+        }
+
+        // Saltar relleno original
+        fseek(archivoEntrada, rellenoOriginal, SEEK_CUR);
+    }
+
+    fclose(archivoSalida);
+
+    printf("Imagen monocromática guardada como estudiante_monocromo.bmp\n");
+    return TODO_OK;
+}
+
+
+
 int cargarMetadatos(FILE* archivo, t_metadata* metadatos)
 {
     unsigned short tipoArchivo;
@@ -514,12 +747,12 @@ int cargarMetadatos(FILE* archivo, t_metadata* metadatos)
     return TODO_OK;
 }
 
-int modificarImagen(const char* nombreArchivo, char** modificaciones, int cantModificaciones)
+int modificarImagen(char** imagenes,int cantImagenes, char** modificaciones, int cantModificaciones)
 {
-    FILE* archivoEntrada = fopen(nombreArchivo, "rb");
+    FILE* archivoEntrada = fopen(imagenes[0], "rb");
     if (!archivoEntrada)
     {
-        printf("No se pudo abrir el archivo %s.\n", nombreArchivo);
+        printf("No se pudo abrir el archivo %s.\n", imagenes[0]);
         return ARCHIVO_NO_ENCONTRADO;
     }
 
@@ -643,6 +876,54 @@ int modificarImagen(const char* nombreArchivo, char** modificaciones, int cantMo
             continue;
         }
 
+        if (strcmp(modificaciones[i], "--achicar") == 0)
+        {
+            resultado = aplicarAchicar(archivoEntrada, &metadatos);
+            if (resultado != TODO_OK)
+            {
+                printf("Error al aplicar achicar: %d\n", resultado);
+            }
+            continue;
+        }
+
+        if (strcmp(modificaciones[i], "--concatenar") == 0)
+        {
+
+            FILE* archivoConcatenar = fopen(imagenes[1], "rb");
+            if (!archivoConcatenar)
+            {
+                printf("No se pudo abrir el archivo %s.\n", imagenes[1]);
+                continue;
+            }
+
+            t_metadata metadatosConcatenar;
+            int resultadoConcat = cargarMetadatos(archivoConcatenar, &metadatosConcatenar);
+            if (resultadoConcat != TODO_OK)
+            {
+                fclose(archivoConcatenar);
+                continue;
+            }
+
+            resultado = aplicarConcatenar(archivoEntrada, &metadatos, archivoConcatenar, &metadatosConcatenar);
+            if (resultado != TODO_OK)
+            {
+                printf("Error al concatenar las imagenes: %d\n", resultado);
+            }
+            fclose(archivoConcatenar);
+            continue;
+        }
+
+        if (strcmp(modificaciones[i], "--monocromo") == 0)
+        {
+            resultado = aplicarMonocromo(archivoEntrada, &metadatos);
+            if (resultado != TODO_OK)
+            {
+                printf("Error al aplicar monocromo: %d\n", resultado);
+            }
+            continue;
+        }
+
+
         printf("No existe funcion definida bajo el parametro %s\n", modificaciones[i]);
     }
 
@@ -650,16 +931,28 @@ int modificarImagen(const char* nombreArchivo, char** modificaciones, int cantMo
     return TODO_OK;
 }
 
-char** obtenerArgumentosModificaciones(char** argv, int cantModificaciones)
+void obtenerArgumentos(char** argv, int cantArgumentos, char** modificaciones, int* cantModificaciones, char** imagenes, int* cantImagenes)
 {
-    char** modificaciones = (char**)malloc(cantModificaciones * sizeof(char*));
+    int imgCount = 0, modCount = 0;
 
-    for (int i = 1; i <= cantModificaciones; i++)
+    for (int i = 1; i <= cantArgumentos; i++)
     {
-        modificaciones[i - 1] = argv[i];
+        // Validar si el argumento empieza con "--"
+        if (strncmp(argv[i], "--", 2) == 0)
+        {
+            modificaciones[modCount++] = argv[i];
+        }
+
+        // Validar si el argumento termina con ".bmp"
+        int len = strlen(argv[i]);
+        if (len > 4 && strcmp(argv[i] + len - 4, ".bmp") == 0)
+        {
+            imagenes[imgCount++] = argv[i];
+        }
     }
 
-    return modificaciones;
+    *cantModificaciones = modCount;
+    *cantImagenes = imgCount;
 }
 
 int solucion(int argc, char* argv[])
@@ -670,9 +963,13 @@ int solucion(int argc, char* argv[])
         return ARCHIVO_NO_ENCONTRADO;
     }
 
-    int cantModificaciones = argc - 2;
-    char** modificaciones = obtenerArgumentosModificaciones(argv, cantModificaciones);
-    const char* nombreArchivo = argv[argc - 1];
+    int cantArgumentos = argc - 1;
+    int cantModificaciones, cantImagenes = 0;
+
+    char** modificaciones = (char**)malloc(cantArgumentos * sizeof(char*));
+    char** imagenes = (char**)malloc(cantArgumentos * sizeof(char*));
+
+    obtenerArgumentos(argv, cantArgumentos, modificaciones, &cantModificaciones, imagenes, &cantImagenes);
 
     printf("Argumentos:\n");
     for (int i = 0; i < argc; i++)
@@ -686,8 +983,9 @@ int solucion(int argc, char* argv[])
         printf("modificaciones[%d] = %s\n", i, modificaciones[i]);
     }
 
-    int resultado = modificarImagen(nombreArchivo, modificaciones, cantModificaciones);
+    int resultado = modificarImagen(imagenes, cantImagenes, modificaciones, cantModificaciones);
 
+    free(imagenes);
     free(modificaciones);
     return resultado;
 }

@@ -15,9 +15,9 @@
 
 // funciones padres
 int solucion(int argc, char* argv[]);
-char** obtenerArgumentosModificaciones(char** argv, int cantModificaciones);
+void obtenerArgumentos(char** argv, int cantArgumentos, char** modificaciones, int* cantModificaciones, char** imagenes, int* cantImagenes);
 int cargarMetadatos(FILE* archivo, t_metadata* metadatos);
-int modificarImagen(const char* nombreArchivo, char** modificaciones, int cantModificaciones);
+int modificarImagen(char** imagenes,int cantImagenes, char** modificaciones, int cantModificaciones);
 
 // funciones de modificacion
 int aplicarNegativo(FILE* archivoEntrada, const t_metadata* metadatos);
@@ -27,6 +27,9 @@ int aplicarTonalidad(FILE* archivoEntrada, const t_metadata* metadatos, int colo
 int aplicarRecortar(FILE* archivoEntrada, const t_metadata* metadatos);
 int aplicarRotar(FILE* archivoEntrada, const t_metadata* metadatos, bool rotarDerecha, const char* nombreArchivoSalida);
 int aplicarEspejo(FILE* archivoEntrada, const t_metadata* metadatos);
+int aplicarAchicar(FILE* archivoEntrada, const t_metadata* metadatos);
+int aplicarConcatenar(FILE* archivoEntrada, const t_metadata* metadatos, FILE* archivoConcatenar, const t_metadata* metadatosConcatenar);
+int aplicarMonocromo(FILE* archivoEntrada, const t_metadata* metadatos);
 
 // funciones de ayuda
 int copiarEncabezado(FILE* archivoSalida, const t_metadata* metadatos);
